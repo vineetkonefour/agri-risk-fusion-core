@@ -1,0 +1,33 @@
+{
+  "farm_id": "demo-farm-001",
+  "location": {
+    "latitude": 12.9716,
+    "longitude": 77.5946
+  },
+  "risks": [
+    {
+      "risk_type": "Waterlogging",
+      "level": "High",
+      "confidence": 87,
+      "recommendation": "Open drainage channels immediately and delay irrigation for 48 hours."
+    },
+    {
+      "risk_type": "Drought",
+      "level": "Medium",
+      "confidence": 74,
+      "recommendation": "Apply controlled irrigation during early morning or evening hours."
+    },
+    {
+      "risk_type": "Frost",
+      "level": "Low",
+      "confidence": 36,
+      "recommendation": "No urgent frost action required; continue nighttime temperature monitoring."
+    },
+    {
+      "risk_type": "Erosion",
+      "level": "Medium",
+      "confidence": 69,
+      "recommendation": "Strengthen bunds and reduce exposed loose topsoil before the next rainfall."
+    }
+  ]
+}
