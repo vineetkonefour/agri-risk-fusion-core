@@ -1,0 +1,3 @@
+Agri-Risk AI Fusion
+
+Note: Core XGBoost models were pre-trained on synthetic data. All API integration, data pipelines, and the React dashboard are being developed live during the 24-hour hackathon window.
