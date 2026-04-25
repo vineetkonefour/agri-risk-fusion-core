@@ -1,1 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agri Risk Intelligence System</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --green:#15803d; --green2:#22c55e; --red:#dc2626; --yellow:#f59e0b;
+      --blue:#2563eb; --dark:#0f172a; --muted:#64748b; --bg:#f1f5f9;
+      --card:#ffffff; --border:#e2e8f0;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#ecfdf5,#f8fafc);color:var(--dark)}
+    header{background:linear-gradient(135deg,#14532d,#16a34a);color:white;padding:28px 18px;text-align:center}
+    header h1{margin:0;font-size:32px} header p{margin:8px 0 0;color:#dcfce7}
+    .layout{display:grid;grid-template-columns:1.05fr .95fr;gap:18px;padding:18px;max-width:1400px;margin:auto}
+    #map{height:540px;border-radius:18px;border:1px solid var(--border);box-shadow:0 10px 30px rgba(15,23,42,.12)}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 10px 25px rgba(15,23,42,.08);margin-bottom:16px}
+    .hero-card{background:linear-gradient(135deg,#052e16,#166534);color:white;border:none}
+    .hero-card h2{margin:0 0 8px;font-size:28px}.subtitle{color:#dcfce7;margin:0}
+    .coords{display:grid;grid-template-columns:1fr 1fr;gap:10px}.coord{background:#f8fafc;padding:12px;border-radius:12px;border:1px solid var(--border)}
+    button{width:100%;background:linear-gradient(135deg,#15803d,#22c55e);color:white;border:0;padding:14px 18px;border-radius:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:12px}
+    button:hover{filter:brightness(.95)}button:disabled{opacity:.6;cursor:not-allowed}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.risk-card{padding:14px;border-radius:14px;border:1px solid var(--border);background:#fff}.risk-title{font-weight:bold;margin-bottom:8px}.badge{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:bold;font-size:12px;color:white}.HIGH{background:var(--red)}.MEDIUM{background:var(--yellow);color:#111827}.LOW{background:var(--green)}
+    .summary{font-size:17px;line-height:1.55;background:#f8fafc;border-left:5px solid var(--green);padding:14px;border-radius:12px}
+    .action-card{padding:14px;border-radius:14px;margin:10px 0;border:1px solid var(--border);background:#f8fafc}.action-high{border-left:6px solid var(--red);background:#fef2f2}.action-low{border-left:6px solid var(--green);background:#f0fdf4}.action-med{border-left:6px solid var(--yellow);background:#fffbeb}
+    .decision{border:2px solid #bbf7d0;background:#f0fdf4}.decision.danger{border-color:#fecaca;background:#fef2f2}.decision h2{margin-top:0}.decision-label{font-weight:bold;color:var(--red);margin-bottom:8px}.safe-label{font-weight:bold;color:var(--green);margin-bottom:8px}
+    .econ-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.econ{background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:14px}.econ span{display:block;color:var(--muted);font-size:13px}.econ b{font-size:20px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}th,td{text-align:left;padding:12px;border-bottom:1px solid var(--border)}th{background:#f8fafc}.best{background:#ecfdf5;font-weight:bold;color:#166534}
+    .spinner{width:36px;height:36px;border:4px solid #d1fae5;border-top:4px solid #16a34a;border-radius:50%;animation:spin 1s linear infinite;margin:auto}@keyframes spin{to{transform:rotate(360deg)}}
+    .hidden{display:none}.error{background:#fef2f2;color:#991b1b;border-left:5px solid var(--red);padding:14px;border-radius:12px}.muted{color:var(--muted)}.timestamp{text-align:right;color:var(--muted);font-size:13px;margin:8px 18px 0}
+    @media(max-width:950px){.layout{grid-template-columns:1fr}.grid-4,.econ-grid{grid-template-columns:1fr 1fr}#map{height:420px}}@media(max-width:560px){.grid-4,.econ-grid,.coords{grid-template-columns:1fr}header h1{font-size:24px}}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Agri Risk Intelligence System</h1>
+  <p>Prediction → Recommendation → Action → Profit</p>
+</header>
 
+<div class="timestamp" id="lastUpdated">Last updated: Not yet analyzed</div>
+
+<div class="layout">
+  <section>
+    <div id="map"></div>
+    <div class="panel">
+      <h2>📍 Location Input</h2>
+      <div class="coords">
+        <div class="coord"><span class="muted">Latitude</span><br><b id="latText">Not selected</b></div>
+        <div class="coord"><span class="muted">Longitude</span><br><b id="lonText">Not selected</b></div>
+      </div>
+      <button id="predictBtn" onclick="predictRisk()">Analyze Agricultural Risk</button>
+      <div id="loading" class="hidden" style="padding:18px"><div class="spinner"></div><p style="text-align:center">Fetching prediction from backend...</p></div>
+      <div id="errorBox" class="hidden error"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel hero-card">
+      <h2>🌱 Recommended Crop: <span id="recommendedCrop">--</span></h2>
+      <p class="subtitle">Based on environmental and risk analysis</p>
+    </div>
+
+    <div class="panel">
+      <h2>🧠 AI Decision Summary</h2>
+      <div class="summary" id="aiSummary">Drop a pin and run analysis to generate a decision summary.</div>
+    </div>
+
+    <div class="panel decision" id="decisionPanel">
+      <h2>🎯 What Should You Do Now?</h2>
+      <div id="decisionLabel" class="safe-label">Waiting for analysis</div>
+      <ul id="decisionList"><li>Select a location and click analyze.</li></ul>
+    </div>
+  </section>
+</div>
+
+<div class="layout" style="padding-top:0">
+  <section>
+    <div class="panel">
+      <h2>⚠️ Risk Display</h2>
+      <div class="grid-4" id="riskGrid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🚨 Action Cards</h2>
+      <div id="actionCards">Actions will appear after prediction.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <h2>💰 Estimated Farmer Profit Indicators</h2>
+      <div class="econ-grid">
+        <div class="econ"><span>MSP</span><b id="msp">--</b></div>
+        <div class="econ"><span>Expected Market Price</span><b id="marketPrice">--</b></div>
+        <div class="econ"><span>Yield</span><b id="yieldVal">--</b></div>
+        <div class="econ"><span>Profit</span><b id="profitVal">--</b></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>📊 Cost Matrix</h2>
+      <table>
+        <thead><tr><th>Crop</th><th>Cost</th><th>Price</th><th>Yield</th><th>Profit</th></tr></thead>
+        <tbody id="costMatrix"><tr><td colspan="5">Run analysis to view crop economics.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  // IMPORTANT: Replace this with your current ngrok base URL. Do not add /predict here.
+  const API_BASE = "https://unselfish-unpadded-impeding.ngrok-free.dev";
+
+  let selectedLat = null;
+  let selectedLon = null;
+  let marker = null;
+
+  const riskNames = ["drought", "waterlogging", "erosion", "frost"];
+
+  const defaultActions = {
+    drought: {
+      HIGH: "Start drip irrigation, apply mulching, avoid water-intensive crops, and schedule irrigation during early morning/evening.",
+      MEDIUM: "Monitor soil moisture, reduce water wastage, and prepare supplemental irrigation.",
+      LOW: "No immediate action required. Continue normal irrigation monitoring."
+    },
+    waterlogging: {
+      HIGH: "Improve field drainage, create channels, avoid over-irrigation, and delay sowing in low-lying patches.",
+      MEDIUM: "Check drainage outlets and avoid excess irrigation for the next cycle.",
+      LOW: "No immediate action required. Maintain normal drainage checks."
+    },
+    erosion: {
+      HIGH: "Use contour farming, cover crops, bunding, and avoid deep tillage before rainfall.",
+      MEDIUM: "Maintain ground cover and inspect slopes after rainfall.",
+      LOW: "No immediate action required. Continue normal soil conservation."
+    },
+    frost: {
+      HIGH: "Use crop covers, light irrigation before frost night, and avoid sensitive crop stages during cold spells.",
+      MEDIUM: "Monitor night temperature and prepare temporary crop protection.",
+      LOW: "No immediate action required. Conditions are safe."
+    }
+  };
+
+  const map = L.map("map").setView([12.9716, 77.5946], 6);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap contributors"
+  }).addTo(map);
+
+  map.on("click", (e) => {
+    selectedLat = e.latlng.lat.toFixed(6);
+    selectedLon = e.latlng.lng.toFixed(6);
+    document.getElementById("latText").innerText = selectedLat;
+    document.getElementById("lonText").innerText = selectedLon;
+    if (marker) map.removeLayer(marker);
+    marker = L.marker([selectedLat, selectedLon]).addTo(map).bindPopup("Selected farm location").openPopup();
+  });
+
+  function normalizeLevel(value) {
+    if (value === undefined || value === null) return "LOW";
+    if (typeof value === "number") {
+      if (value >= 0.67) return "HIGH";
+      if (value >= 0.34) return "MEDIUM";
+      return "LOW";
+    }
+    const text = String(value).toUpperCase();
+    if (text.includes("HIGH")) return "HIGH";
+    if (text.includes("MEDIUM") || text.includes("MODERATE")) return "MEDIUM";
+    return "LOW";
+  }
+
+  function getRiskScores(data) {
+    const r = data.risk_scores || data.risks || data.risk || {};
+    return {
+      drought: normalizeLevel(r.drought ?? data.drought_risk),
+      waterlogging: normalizeLevel(r.waterlogging ?? data.waterlogging_risk),
+      erosion: normalizeLevel(r.erosion ?? data.erosion_risk),
+      frost: normalizeLevel(r.frost ?? data.frost_risk)
+    };
+  }
+
+  function getEconomics(data, crop) {
+    const e = data.economics || {};
+    return {
+      msp: e.msp ?? e.MSP ?? "₹2,200/qtl",
+      market_price: e.market_price ?? e.expected_market_price ?? "₹2,800/qtl",
+      yield: e.yield ?? e.expected_yield ?? "24 qtl/acre",
+      profit: e.profit ?? e.expected_profit ?? "₹32,000/acre",
+      cost_matrix: e.cost_matrix || e.crops || [
+        { crop, cost: "₹28,000", price: "₹2,800/qtl", yield: "24 qtl", profit: "₹39,200" },
+        { crop: "Ragi", cost: "₹18,000", price: "₹3,200/qtl", yield: "14 qtl", profit: "₹26,800" },
+        { crop: "Maize", cost: "₹24,000", price: "₹2,250/qtl", yield: "22 qtl", profit: "₹25,500" }
+      ]
+    };
+  }
+
+  function getAction(actions, risk, level) {
+    if (actions && actions[risk]) {
+      if (typeof actions[risk] === "string") return actions[risk];
+      return actions[risk][level] || actions[risk].action || defaultActions[risk][level];
+    }
+    return defaultActions[risk][level];
+  }
+
+  function renderRisks(risks) {
+    const grid = document.getElementById("riskGrid");
+    grid.innerHTML = "";
+    riskNames.forEach((risk) => {
+      const level = risks[risk];
+      grid.innerHTML += `<div class="risk-card"><div class="risk-title">${risk.toUpperCase()}</div><span class="badge ${level}">${level}</span></div>`;
+    });
+  }
+
+  function renderActions(risks, actions) {
+    const box = document.getElementById("actionCards");
+    box.innerHTML = "";
+    riskNames.forEach((risk) => {
+      const level = risks[risk];
+      const cls = level === "HIGH" ? "action-high" : level === "MEDIUM" ? "action-med" : "action-low";
+      const actionText = level === "LOW" ? "No immediate action required" : getAction(actions, risk, level);
+      box.innerHTML += `<div class="action-card ${cls}"><b>${risk.toUpperCase()} — ${level}</b><p>${actionText}</p></div>`;
+    });
+  }
+
+  function renderDecisionPanel(risks, actions) {
+    const highRisks = riskNames.filter(r => risks[r] === "HIGH");
+    const mediumRisks = riskNames.filter(r => risks[r] === "MEDIUM");
+    const panel = document.getElementById("decisionPanel");
+    const label = document.getElementById("decisionLabel");
+    const list = document.getElementById("decisionList");
+    list.innerHTML = "";
+
+    if (highRisks.length > 0) {
+      panel.classList.add("danger");
+      label.className = "decision-label";
+      label.innerText = "Immediate Action Required";
+      highRisks.slice(0, 2).forEach(r => {
+        list.innerHTML += `<li><b>${r.toUpperCase()}:</b> ${getAction(actions, r, "HIGH")}</li>`;
+      });
+    } else if (mediumRisks.length > 0) {
+      panel.classList.remove("danger");
+      label.className = "decision-label";
+      label.style.color = "#b45309";
+      label.innerText = "Preventive Monitoring Required";
+      mediumRisks.slice(0, 2).forEach(r => {
+        list.innerHTML += `<li><b>${r.toUpperCase()}:</b> ${getAction(actions, r, "MEDIUM")}</li>`;
+      });
+    } else {
+      panel.classList.remove("danger");
+      label.className = "safe-label";
+      label.innerText = "Safe to continue normal farming";
+      list.innerHTML = "<li>All major risks are low. Continue normal farming with routine monitoring.</li>";
+    }
+  }
+
+  function renderEconomics(econ) {
+    document.getElementById("msp").innerText = econ.msp;
+    document.getElementById("marketPrice").innerText = econ.market_price;
+    document.getElementById("yieldVal").innerText = econ.yield;
+    document.getElementById("profitVal").innerText = econ.profit;
+
+    const tbody = document.getElementById("costMatrix");
+    const rows = econ.cost_matrix || [];
+    let bestIndex = 0;
+    let bestProfit = -Infinity;
+    rows.forEach((row, i) => {
+      const p = Number(String(row.profit || "0").replace(/[^0-9.-]/g, ""));
+      if (p > bestProfit) { bestProfit = p; bestIndex = i; }
+    });
+
+    tbody.innerHTML = "";
+    rows.slice(0, 3).forEach((row, i) => {
+      tbody.innerHTML += `<tr class="${i === bestIndex ? "best" : ""}"><td>${row.crop || row.crop_name || "--"}${i === bestIndex ? " ⭐" : ""}</td><td>${row.cost || "--"}</td><td>${row.price || row.market_price || "--"}</td><td>${row.yield || "--"}</td><td>${row.profit || "--"}</td></tr>`;
+    });
+  }
+
+  function renderSummary(risks, crop) {
+    const high = riskNames.find(r => risks[r] === "HIGH");
+    const medium = riskNames.find(r => risks[r] === "MEDIUM");
+    if (high) {
+      document.getElementById("aiSummary").innerText = `High ${high} risk detected. ${crop} is recommended as a resilient and profitable option based on current environmental and risk analysis.`;
+    } else if (medium) {
+      document.getElementById("aiSummary").innerText = `Moderate ${medium} risk detected. ${crop} is recommended with preventive monitoring and proper field management.`;
+    } else {
+      document.getElementById("aiSummary").innerText = `Conditions are safe. ${crop} is recommended for optimal yield and better profit potential.`;
+    }
+  }
+
+  async function predictRisk() {
+    const errorBox = document.getElementById("errorBox");
+    const loading = document.getElementById("loading");
+    const btn = document.getElementById("predictBtn");
+
+    errorBox.classList.add("hidden");
+
+    if (!selectedLat || !selectedLon) {
+      errorBox.innerText = "Please drop a pin on the map first.";
+      errorBox.classList.remove("hidden");
+      return;
+    }
+    if (API_BASE.includes("PASTE_YOUR_NGROK_URL_HERE")) {
+      errorBox.innerText = "Replace API_BASE with your ngrok URL before testing.";
+      errorBox.classList.remove("hidden");
+      return;
+    }
+
+    loading.classList.remove("hidden");
+    btn.disabled = true;
+
+    try {
+      const url = `${API_BASE}/predict?lat=${selectedLat}&lon=${selectedLon}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            "ngrok-skip-browser-warning": "true"
+        }
+    });
+      if (!response.ok) throw new Error(`API failed with status ${response.status}`);
+      const data = await response.json();
+
+      const crop = data.recommended_crop || data.crop_recommendation || data.best_crop || "Ragi";
+      const risks = getRiskScores(data);
+      const actions = data.actions || {};
+      const economics = getEconomics(data, crop);
+
+      document.getElementById("recommendedCrop").innerText = crop;
+      renderSummary(risks, crop);
+      renderRisks(risks);
+      renderActions(risks, actions);
+      renderDecisionPanel(risks, actions);
+      renderEconomics(economics);
+      document.getElementById("lastUpdated").innerText = `Last updated: ${new Date().toLocaleString()}`;
+    } catch (err) {
+      errorBox.innerText = `Backend connection failed: ${err.message}. Check Flask, ngrok URL, and CORS.`;
+      errorBox.classList.remove("hidden");
+    } finally {
+      loading.classList.add("hidden");
+      btn.disabled = false;
+    }
+  }
+
+  renderRisks({ drought: "LOW", waterlogging: "LOW", erosion: "LOW", frost: "LOW" });
+</script>
+</body>
+</html>
