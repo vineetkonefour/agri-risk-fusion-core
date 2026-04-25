@@ -1,15 +1,23 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
+**pycache**/
+*.pyc
+*.pyo
+*.pyd
+
 venv/
 .env
 
-# Models (Keep these if they are under 50MB, otherwise use Git LFS)
-# Since your .pkl files are small, we can keep them for now
-# models/*.pkl 
+tempCodeRunnerFile.py
 
-# Frontend
-node_modules/
-build/
 .DS_Store
+Thumbs.db
+
+*.log
+
+.idea/
+.vscode/
+
+**pycache**/
+
+*.csv~
+
+*.tmp
