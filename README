@@ -1,3 +1,552 @@
-Agri-Risk AI Fusion
+# Agri-Risk AI Fusion Backend
 
-Note: Core XGBoost models were pre-trained on synthetic data. All API integration, data pipelines, and the React dashboard are being developed live during the 24-hour hackathon window.
+Agri-Risk AI Fusion Backend is an AI-based agricultural risk intelligence system.  
+It takes a farm location using latitude and longitude, fetches live environmental data, converts it into a structured 14-feature input vector, and predicts agricultural risks along with crop recommendation and mitigation guidance.
+
+This project is designed mainly for B2B use cases such as agri-tech companies, crop advisory platforms, insurance companies, seed companies, and government agriculture dashboards.
+
+---
+
+## Problem Statement
+
+Farmers and agri-companies get raw weather data from different sources, but raw data alone does not give direct farming decisions.
+
+For example, a weather API may show rainfall, temperature, or humidity, but it does not directly answer:
+
+- Is this location under drought risk?
+- Is there a chance of waterlogging?
+- Is frost risk possible?
+- Is the land erosion-prone?
+- Which crop is more suitable for this location?
+- What mitigation action should be taken?
+
+Agri-Risk AI solves this by converting raw climate and terrain data into decision-ready agricultural intelligence.
+
+---
+
+## Project Objective
+
+The objective of this project is to build an AI-powered backend that:
+
+- Accepts latitude and longitude as input
+- Fetches live weather, rainfall, solar, and elevation data
+- Builds a 14-feature environmental vector
+- Predicts multiple agricultural risks using machine learning
+- Recommends a suitable crop
+- Provides MSP, cultivation cost, season, and mitigation strategies
+- Returns all results through a Flask API
+
+---
+
+## Use Case
+
+### Example Input
+
+```text
+Latitude: 12.9716
+Longitude: 77.5946
+```
+
+### Example Output
+
+The system returns:
+
+- Recommended crop
+- Drought risk
+- Waterlogging risk
+- Frost risk
+- Erosion risk
+- Confidence score for each risk
+- Crop market price / MSP
+- Estimated cultivation cost
+- Suitable season
+- Mitigation strategies
+- Raw diagnostics
+
+---
+
+## Why This is B2B
+
+This project is more useful as a B2B solution because companies already have farmer or field location data.
+
+Possible users:
+
+- Agri-tech platforms
+- Crop insurance companies
+- Seed and fertilizer companies
+- Precision farming dashboards
+- Government agriculture departments
+- Farm advisory service providers
+
+Instead of hiring a separate team to manually analyze climate reports, companies can directly integrate this backend API and generate risk-based recommendations.
+
+---
+
+## System Architecture
+
+```text
+User / Company Dashboard
+        |
+        v
+Latitude + Longitude Input
+        |
+        v
+Flask Backend API
+        |
+        v
+External Data Sources
+  - Open-Meteo API
+  - NASA POWER API
+  - Open Elevation API
+        |
+        v
+Data Normalization + Feature Engineering
+        |
+        v
+14-Feature Environmental Vector
+        |
+        v
+Machine Learning Models
+  - Drought Risk Model
+  - Waterlogging Risk Model
+  - Frost Risk Model
+  - Erosion Risk Model
+  - Crop Recommendation Model
+        |
+        v
+Final JSON Response
+```
+
+---
+
+## APIs Used
+
+### 1. Open-Meteo API
+
+Used to fetch:
+
+- Current temperature
+- Relative humidity
+- Wind speed
+- 7-day minimum temperature
+
+### 2. NASA POWER API
+
+Used to fetch:
+
+- Solar radiation
+- 7-day rainfall / precipitation data
+
+### 3. Open Elevation API
+
+Used to fetch:
+
+- Elevation
+- Terrain-based derived values such as slope, aspect, and TWI fallback logic
+
+---
+
+## AI / ML Work in the Project
+
+AI is not used for fetching data.  
+AI starts after the raw environmental data is converted into structured features.
+
+The project uses machine learning models to convert environmental conditions into agricultural predictions.
+
+---
+
+## Why XGBoost is Used
+
+XGBoost is used because this project works with structured tabular data.
+
+The input is not image, audio, or text data.  
+It is numerical environmental data such as rainfall, temperature, humidity, slope, elevation, and solar radiation.
+
+XGBoost is suitable because:
+
+- It performs well on tabular datasets
+- It captures non-linear relationships
+- It handles feature interactions effectively
+- It is faster and lighter than deep learning for this type of problem
+- It reduces overfitting using boosting and regularization
+- It gives strong performance on small to medium datasets
+
+Example:
+
+High rainfall alone does not always mean waterlogging.  
+Waterlogging depends on rainfall, slope, elevation, and terrain wetness together.  
+XGBoost can learn these combined patterns better than simple rule-based systems.
+
+---
+
+## Machine Learning Models Used
+
+The project uses separate trained models for each risk:
+
+1. Drought Risk Model
+2. Waterlogging Risk Model
+3. Frost Risk Model
+4. Erosion Risk Model
+5. Crop Recommendation Model
+
+Each risk behaves differently, so separate models are better than one combined model.
+
+For example:
+
+- Drought depends more on rainfall deficit, temperature anomaly, and humidity.
+- Frost depends more on minimum temperature and elevation.
+- Waterlogging depends more on rainfall, slope, and TWI.
+- Erosion depends more on slope, rainfall, and elevation.
+
+---
+
+## 14 Features Used for Prediction
+
+The ML models use the following 14 features:
+
+```text
+1. elevation
+2. slope
+3. aspect
+4. TWI
+5. rainfall_hist
+6. temp_avg
+7. humidity
+8. solar_rad
+9. rainfall_7day
+10. temp_min_7day
+11. wind_speed
+12. temp_anomaly
+13. rain_deviation
+14. north_facing
+```
+
+These features were selected because they directly affect agricultural risk and crop suitability.
+
+---
+
+## Training Pipeline
+
+The models were trained offline first and then saved as `.pkl` files.
+
+Training process:
+
+```text
+Dataset collection
+        |
+        v
+Data cleaning
+        |
+        v
+Feature selection
+        |
+        v
+14-feature input preparation
+        |
+        v
+Target label preparation
+        |
+        v
+Train-test split
+        |
+        v
+XGBoost model training
+        |
+        v
+Model evaluation
+        |
+        v
+Save model as .pkl using joblib
+```
+
+Example training logic:
+
+```python
+X = data[feature_columns]
+y = data[target_column]
+
+model = XGBClassifier()
+model.fit(X_train, y_train)
+
+joblib.dump(model, "drought_risk.pkl")
+```
+
+---
+
+## Why `.pkl` Files are Used
+
+The models are trained once and saved as pickle files.
+
+During backend execution, the trained models are loaded using `joblib`.
+
+This avoids retraining the model every time a prediction request is sent.
+
+```python
+model = joblib.load("models/drought_risk.pkl")
+```
+
+This makes the backend faster and production-ready for inference.
+
+---
+
+## Project Folder Structure
+
+```text
+agri-risk-backend/
+│
+├── backend/
+│   │
+│   ├── app.py
+│   │
+│   ├── engine/
+│   │   └── risk_engine.py
+│   │
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── open_meteo.py
+│   │   ├── nasa_power.py
+│   │   ├── elevation.py
+│   │   ├── formatter.py
+│   │   └── crop_service.py
+│   │
+│   ├── models/
+│   │   ├── drought_risk.pkl
+│   │   ├── waterlogging_risk.pkl
+│   │   ├── frost_risk.pkl
+│   │   ├── erosion_risk.pkl
+│   │   ├── crop_recommender.pkl
+│   │   └── crop_labels.pkl
+│   │
+│   ├── data/
+│   │   └── advanced_agri_intelligence_10k.csv
+│   │
+│   ├── requirements.txt
+│   └── test_api.py
+```
+
+---
+
+## Required Model File Names
+
+The backend expects the model files to have these exact names:
+
+```text
+waterlogging_risk.pkl
+drought_risk.pkl
+frost_risk.pkl
+erosion_risk.pkl
+crop_recommender.pkl
+crop_labels.pkl
+```
+
+If files are named like:
+
+```text
+drought_risk(1).pkl
+crop_recommender (1)(1).pkl
+```
+
+rename them properly before running the backend.
+
+---
+
+## Installation and Setup
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/agri-risk-backend.git
+```
+
+### 2. Enter Project Folder
+
+```bash
+cd agri-risk-backend/backend
+```
+
+### 3. Create Virtual Environment
+
+```bash
+python -m venv venv
+```
+
+### 4. Activate Virtual Environment
+
+For Windows PowerShell:
+
+```bash
+venv\Scripts\activate
+```
+
+### 5. Install Requirements
+
+```bash
+pip install -r requirements.txt
+```
+
+### 6. Run Flask Backend
+
+```bash
+python app.py
+```
+
+The server will start at:
+
+```text
+http://127.0.0.1:5000
+```
+
+---
+
+## API Endpoints
+
+### Home Route
+
+```http
+GET /
+```
+
+Response:
+
+```text
+Agri-Risk AI Fusion API is Online. Send GET requests to /predict?lat=...&lon=...
+```
+
+---
+
+### Prediction Route
+
+```http
+GET /predict?lat=12.9716&lon=77.5946
+```
+
+Example:
+
+```text
+http://127.0.0.1:5000/predict?lat=12.9716&lon=77.5946
+```
+
+---
+
+## Sample JSON Response
+
+```json
+{
+  "status": "success",
+  "recommended_crop": "ragi",
+  "recommendation": {
+    "crop": "ragi",
+    "msp": 2500,
+    "cost": 35000,
+    "season": "Kharif",
+    "soil_ph": "6.0-7.5"
+  },
+  "risk_scores": {
+    "drought": {
+      "level": "MEDIUM",
+      "confidence": "82.4%"
+    },
+    "waterlogging": {
+      "level": "LOW",
+      "confidence": "91.2%"
+    },
+    "frost": {
+      "level": "LOW",
+      "confidence": "96.1%"
+    },
+    "erosion": {
+      "level": "MEDIUM",
+      "confidence": "74.8%"
+    }
+  },
+  "actions": {
+    "drought": "Use drip irrigation and mulching.",
+    "waterlogging": "Improve drainage channels.",
+    "erosion": "Use contour farming and cover crops.",
+    "frost": "Use protective covering if temperature drops."
+  },
+  "raw_diagnostics": {
+    "weather": {},
+    "elevation": {}
+  }
+}
+```
+
+---
+
+## Tech Stack
+
+- Python
+- Flask
+- Flask-CORS
+- Pandas
+- Joblib
+- XGBoost
+- Scikit-learn
+- Open-Meteo API
+- NASA POWER API
+- Open Elevation API
+
+---
+
+## Current Status
+
+Completed:
+
+- Flask backend created
+- Live API integration completed
+- Weather data fetching completed
+- NASA POWER integration completed
+- Elevation data integration completed
+- Feature engineering completed
+- 14-feature vector created
+- ML model loading completed
+- Risk prediction logic completed
+- Crop recommendation integrated
+- Crop intelligence metadata added
+- JSON API response generated
+
+---
+
+## Future Enhancements
+
+Planned improvements:
+
+- Add frontend dashboard
+- Add crop profitability comparison graph
+- Add last 5-10 years cost/profit trend analysis
+- Add AI-generated recommendation summary
+- Add farmer-friendly explanation in local language
+- Add database for storing past predictions
+- Add user login for companies or farmers
+- Add report download as PDF
+- Add map-based location selection
+- Add more crop-specific advisory intelligence
+
+---
+
+## Unique Value
+
+This project is not just a weather application.
+
+Weather apps show raw weather values.  
+Agri-Risk AI converts weather, terrain, and environmental signals into:
+
+- Risk prediction
+- Crop recommendation
+- Economic insight
+- Mitigation strategy
+- Decision-ready agricultural intelligence
+
+That makes it useful for real agri-business decision systems.
+
+---
+
+## Team Explanation Summary
+
+In simple words:
+
+This project takes a farm location, fetches live environmental data, processes it into 14 important agricultural features, passes it through trained machine learning models, and returns crop risks, best crop recommendation, cost, price, season, and mitigation actions.
+
+It helps agri-companies and platforms provide better farming decisions instead of only showing raw weather data.
+
